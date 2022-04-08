@@ -4,13 +4,31 @@ This project is a compiler that turns a file of PCRE expressions and turns it in
 
 This project was done for my master's thesis, which can be watched in the following link: [Presentation](https://youtu.be/dNqrWZAVnhs).
 
-## Project flow
+# Project flow
 
 ![](README/ProjectFlow.png)
 
 The project is divided into 2 parts: The FABuilder and the Code Generator.
 
-## FABuilder
+# Usage
+
+A file must be provided with the regex rules to generate the files from. A file prefix is also asked in order to generate the following files: [prefix].hpp and [prefix].cpp
+
+Example usage:
+```go
+    import (
+        "fmt"
+        "thesisGoRemake/FABuilder/Builder"
+        "thesisGoRemake/FABuilder/Builder/CharSet"
+        "thesisGoRemake/FABuilder/DOT"
+    )
+    
+    func main()  {
+        Builder.GenerateFromFile("ExampleFile.txt", "RegexEngine")
+    }    
+```
+
+# FABuilder
 
 The FABuilder creates a DFA representation of each of the regular expressions. This is done by using a tree walker provided by the ANTLR4 parser+lexer of the provided ruleset to create a graph representation of the DFA.
 
@@ -65,4 +83,3 @@ The engine is a function that calls each of the engines and sends back the resul
 | Code Generator Features     | State              |
 |----------------------|--------------------|
 | Not in development   | Not in development|
-

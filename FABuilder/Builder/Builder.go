@@ -40,15 +40,19 @@ func NewDFABuilderListener() *DFABuilderListener {
 	}
 }
 
-func GenerateFromFile() {
-	input, _ := antlr.NewFileStream("")
+func GenerateFromFile(ruleFilePath, engineprefix string) {
+	builder := NewDFABuilderListener()
+
+	input, _ := antlr.NewFileStream(ruleFilePath)
 	lexer := parser.NewPCRELexer(input)
 	stream := antlr.NewCommonTokenStream(lexer, 0)
 	p := parser.NewPCREParser(stream)
 	p.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
 	p.BuildParseTrees = true
 	tree := p.Parse()
-	antlr.ParseTreeWalkerDefault.Walk(NewDFABuilderListener(), tree)
+	antlr.ParseTreeWalkerDefault.Walk(builder, tree)
+
+	//graphs := builder.Graphs
 }
 
 func (d *DFABuilderListener) EnterParse(ctx *parser.ParseContext) {

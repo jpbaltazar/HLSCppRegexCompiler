@@ -1,0 +1,2 @@
+digraph {{.Name}} {
+{{printf "%s" .VerticesEdges}}}

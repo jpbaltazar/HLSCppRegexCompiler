@@ -74,7 +74,7 @@ The engine is a function that calls each of the engines and sends back the resul
 | Builder Features     | State              |
 |----------------------|--------------------|
 | Basic construction   | Done               |
-| Back-references      | Not in development |
+| Back-references      | In development     |
 | Numbered loops       | Done               |
 | Determinism Enforcer | Done               |
 

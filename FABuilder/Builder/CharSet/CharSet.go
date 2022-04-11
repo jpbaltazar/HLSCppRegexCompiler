@@ -340,6 +340,7 @@ func (c CharSet) Intersect(other CharSet) (newThis CharSet, newOther CharSet, in
 		}
 	}
 
+	//Should never happen
 	if len(thisNumbers)%2 > 0 {
 		thisNumbers = append(thisNumbers, 255) //TODO technically cheating, bound should come from parser
 		print("WARNING, UNEVEN NUMBER OF ThisNumbers\n")

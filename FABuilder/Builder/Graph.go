@@ -2,7 +2,7 @@ package Builder
 
 import (
 	"thesisGoRemake/FABuilder/Builder/CharSet"
-	Flags "thesisGoRemake/FABuilder/Flags"
+	"thesisGoRemake/FABuilder/Flags"
 	"thesisGoRemake/FABuilder/NumberedLoops"
 )
 
@@ -14,7 +14,7 @@ type Graph struct {
 	Rule  string
 	Flags Flags.Flags
 
-	//TODO shorthand list of references used (for backreference listing)
+	referencesUsed map[string]bool
 
 	//private internals
 	vertices map[VertexID]*Vertex
@@ -38,6 +38,7 @@ func NewGraphWithFlags(rule string, flags Flags.Flags) *Graph {
 		nil,
 		rule,
 		flags,
+		make(map[string]bool),
 		make(map[VertexID]*Vertex),
 		make(map[NumberedLoops.VarId]*NumberedLoops.LoopVar),
 		0,

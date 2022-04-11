@@ -127,7 +127,7 @@ func (d *DFABuilderListener) EnforceDeterminism() error {
 	}
 
 	//delete all original vertices
-	for VID, _ := range originalVertices {
+	for VID := range originalVertices {
 		d.CurrGraph.RemoveVertexFromID(VID)
 	}
 

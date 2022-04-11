@@ -14,13 +14,18 @@ import (
 	"unicode"
 )
 
+type ErrorEntry struct {
+	Graph  *Graph
+	Errors []error
+}
+
 type DFABuilderListener struct {
 	*parser.BasePCREListener
 
-	Graphs    []Graph
+	Graphs    []*Graph
 	CurrGraph *Graph
 
-	err error
+	Errors map[*Graph][]error
 
 	Parser Parsers2.Parser
 
@@ -32,7 +37,7 @@ type DFABuilderListener struct {
 
 func NewDFABuilderListener() *DFABuilderListener {
 	return &DFABuilderListener{
-		Graphs:            make([]Graph, 0),
+		Graphs:            make([]*Graph, 0),
 		CurrGraph:         nil,
 		Parser:            Parsers2.ASCII{}, //default
 		SubGraphStack:     *NewSubGraphStack(),
@@ -40,9 +45,10 @@ func NewDFABuilderListener() *DFABuilderListener {
 	}
 }
 
-func GenerateFromFile(ruleFilePath, engineprefix string) {
+func GenerateFromFile(ruleFilePath, namingPrefix string) {
 	builder := NewDFABuilderListener()
 
+	//process input file
 	input, _ := antlr.NewFileStream(ruleFilePath)
 	lexer := parser.NewPCRELexer(input)
 	stream := antlr.NewCommonTokenStream(lexer, 0)
@@ -52,11 +58,7 @@ func GenerateFromFile(ruleFilePath, engineprefix string) {
 	tree := p.Parse()
 	antlr.ParseTreeWalkerDefault.Walk(builder, tree)
 
-	//graphs := builder.Graphs
-}
-
-func (d *DFABuilderListener) EnterParse(ctx *parser.ParseContext) {
-
+	//generate engines
 }
 
 func (d *DFABuilderListener) EnterSingleRule(ctx *parser.SingleRuleContext) {
@@ -69,10 +71,6 @@ func (d *DFABuilderListener) EnterSingleRule(ctx *parser.SingleRuleContext) {
 }
 
 func (d *DFABuilderListener) ExitSingleRule(*parser.SingleRuleContext) {
-	//orphan node removal
-	//Won't be applied for now
-	//TODO implement orphan removal
-
 	sub := d.SubGraphStack.Pop()
 	d.CurrGraph.RootVertex = sub.Start
 
@@ -85,8 +83,7 @@ func (d *DFABuilderListener) ExitSingleRule(*parser.SingleRuleContext) {
 		if d.CurrGraph.Flags.PCRE_G {
 			interval, err := d.Parser.ParseCharInterval("\n")
 			if err != nil {
-				d.err = err
-				return
+				d.Errors[d.CurrGraph] = append(d.Errors[d.CurrGraph], err)
 			}
 			restartEdge.C.Add(interval)
 		}
@@ -100,14 +97,31 @@ func (d *DFABuilderListener) ExitSingleRule(*parser.SingleRuleContext) {
 		}
 	}
 
-	//TODO loopback for multiline and non multiline rules
+	//if it has the start of string it can't match other than at the start
+	if d.CurrGraph.Flags.StartOfString {
+		errorVertex := d.CurrGraph.CreateDefaultVertex()
+
+		if !d.CurrGraph.Flags.PERL_m {
+			d.CurrGraph.CreateEdge(errorVertex, d.CurrGraph.RootVertex, d.Parser.CreateNullCharSet())
+		} else {
+			d.CurrGraph.CreateEdge(errorVertex, d.CurrGraph.RootVertex, d.Parser.CreateNewLineNullCharSet())
+		}
+	} else {
+		//link vertices back to the start
+		for _, v := range d.CurrGraph.vertices {
+			if v != d.CurrGraph.RootVertex {
+				for _, out := range d.CurrGraph.RootVertex.Outgoing {
+					d.CurrGraph.CopyEdge(v, out.To, *out)
+				}
+			}
+		}
+	}
 
 	//Call EnforceDeterminism
 	err := d.EnforceDeterminism()
 	if err != nil {
 		return
 	}
-	//TODO implement
 }
 
 func (d *DFABuilderListener) ExitAlternation(ctx *parser.AlternationContext) {
@@ -314,9 +328,10 @@ func (d *DFABuilderListener) ExitBackreference(ctx *parser.BackreferenceContext)
 	start := d.CurrGraph.CreateDefaultVertex()
 	stop := d.CurrGraph.CreateDefaultVertex()
 
+	d.CurrGraph.referencesUsed[ref] = true
 	d.CurrGraph.CreateBackrefEdge(start, stop, ref)
 
-	epsilonStop := d.CurrGraph.CreateDefaultVertex()
+	epsilonStop := d.CurrGraph.CreateTerminalVertex()
 
 	d.CurrGraph.CreateEpsilonEdge(start, epsilonStop)
 	d.CurrGraph.CreateEpsilonEdge(stop, epsilonStop)
@@ -509,8 +524,6 @@ func (d *DFABuilderListener) ExitCc_atom(ctx *parser.Cc_atomContext) {
 			Ctx:   ctx.GetText(),
 		})
 	}
-
-	//TODO finish
 }
 
 func (d *DFABuilderListener) EnterShared_atom(ctx *parser.Shared_atomContext) {
@@ -662,7 +675,7 @@ func (d *DFABuilderListener) ExitShared_literal(ctx *parser.Shared_literalContex
 	})
 }
 
-//If any
+// '?' If any
 func (d *DFABuilderListener) HandleQuestionMarkQuantifier(start, stop *Vertex, ctx string) {
 	newStop := d.CurrGraph.CreateTerminalVertex()
 	stop.Terminal = false
@@ -678,7 +691,7 @@ func (d *DFABuilderListener) HandleQuestionMarkQuantifier(start, stop *Vertex, c
 
 }
 
-//at least one
+// '+' at least one
 func (d *DFABuilderListener) HandlePlusQuantifier(start, stop *Vertex, ctx string) {
 	//  optimization: instead of an empty transition to the beginning,
 	//                just copy the transitions to the next state
@@ -695,7 +708,7 @@ func (d *DFABuilderListener) HandlePlusQuantifier(start, stop *Vertex, ctx strin
 	})
 }
 
-//any number
+// '*' any number
 func (d *DFABuilderListener) HandleAsteriskQuantifier(start, stop *Vertex, ctx string) {
 	skipStop := d.CurrGraph.CreateTerminalVertex()
 	stop.Terminal = false
@@ -787,5 +800,4 @@ func (d *DFABuilderListener) ExitQuantifier(ctx *parser.QuantifierContext) {
 		d.HandleNumberedQuantifier(start, stop, quantifierType)
 		break
 	}
-
 }

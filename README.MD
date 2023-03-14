@@ -1,6 +1,6 @@
 # HLS C++ Regex Compiler
 
-![Old java version][https://github.com/ZeD4805/PCREtoFAtoCPP]
+[Old java version][https://github.com/ZeD4805/PCREtoFAtoCPP]
 
 This project is a compiler that turns a file of PCRE expressions and turns it into a C++ header and source files that describe an engine to match the text to the regular expressions. This engine is then put through a HLS tool (Vitis HLS) to get an FPGA bitstream of the engine.
 
